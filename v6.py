@@ -55,6 +55,30 @@ class DownloadManager:
                                 self.update_progress(total_size)
 
                 self.progress_bar["value"] = 100
+            else:
+                youtube = pytube.YouTube(url)
+                video_stream = youtube.streams.get_highest_resolution()
+
+                response = requests.get(video_stream.url, stream=True)
+                total_size = int(response.headers.get('content-length', 0))
+
+                video_title_cleaned = re.sub(r'\W+', '-', youtube.title)
+                video_filename = f"{video_title_cleaned}.mp4"
+                video_path = os.path.join(self.download_directory, video_filename)
+
+                with open(video_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=self.chunk_size):
+                        if self.paused:
+                            return
+
+                        if chunk:
+                            f.write(chunk)
+                            self.bytes_downloaded += len(chunk)
+                            self.update_progress(total_size)
+
+                self.progress_bar["value"] = 100
+                success_message = f"Download completed: {video_filename}\n"
+                self.error_text_widget.insert(tk.END, success_message)
 
         except Exception as e:
             error_message = f"Error during download: {str(e)}\n"
